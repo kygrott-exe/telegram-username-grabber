@@ -18,6 +18,7 @@ Environment (see .env.example):
   TG_API_HASH      from https://my.telegram.org
   POLL_INTERVAL    seconds between polls (default 3)
 """
+import asyncio
 import os
 import random
 import sys
@@ -94,6 +95,14 @@ HEADERS = {
 # In-memory: login_request_id -> TelegramClient waiting between code / password steps
 _pending_clients: dict[str, TelegramClient] = {}
 
+# Single persistent event loop for all Telethon calls (clients persist across polls).
+_loop = asyncio.new_event_loop()
+asyncio.set_event_loop(_loop)
+
+
+def run(coro):
+    return _loop.run_until_complete(coro)
+
 
 def api_post(path: str, payload: dict) -> dict:
     r = requests.post(f"{APP_BASE_URL}{path}", headers=HEADERS,
@@ -123,8 +132,8 @@ def handle_login_task(task: dict) -> None:
     if status == "pending":
         client = TelegramClient(StringSession(), API_ID, API_HASH)
         try:
-            client.connect()
-            sent = client.send_code_request(phone)
+            run(client.connect())
+            sent = run(client.send_code_request(phone))
             _pending_clients[task_id] = client
             report_login(task_id, "code_sent",
                          phone_code_hash=sent.phone_code_hash)
@@ -148,8 +157,8 @@ def handle_login_task(task: dict) -> None:
             return
         code = task.get("code") or ""
         try:
-            client.sign_in(phone=phone, code=code,
-                           phone_code_hash=task.get("phone_code_hash"))
+            run(client.sign_in(phone=phone, code=code,
+                               phone_code_hash=task.get("phone_code_hash")))
             _finalize_success(task_id, client)
         except SessionPasswordNeededError:
             report_login(task_id, "need_2fa")
@@ -169,7 +178,7 @@ def handle_login_task(task: dict) -> None:
             return
         password = task.get("password") or ""
         try:
-            client.sign_in(password=password)
+            run(client.sign_in(password=password))
             _finalize_success(task_id, client)
         except PasswordHashInvalidError:
             _cleanup(task_id)
@@ -182,7 +191,7 @@ def handle_login_task(task: dict) -> None:
 
 def _finalize_success(task_id: str, client: TelegramClient) -> None:
     try:
-        me = client.get_me()
+        me = run(client.get_me())
         session_str = client.session.save()
         report_login(task_id, "success",
                      session=session_str,
@@ -202,7 +211,9 @@ def _cleanup(task_id: str) -> None:
 
 def _safe_disconnect(client: TelegramClient) -> None:
     try:
-        client.disconnect()
+        result = client.disconnect()
+        if asyncio.iscoroutine(result):
+            run(result)
     except Exception:
         pass
 
@@ -258,17 +269,17 @@ def process_job(job: dict):
 
     client = TelegramClient(StringSession(session_str), API_ID, API_HASH)
     try:
-        client.connect()
-        if not client.is_user_authorized():
+        run(client.connect())
+        if not run(client.is_user_authorized()):
             report_job(job_id, "failed",
                        "Telegram session is no longer authorized. Reconnect the account.")
             return
 
         # 1. Create channel
         try:
-            result = client(CreateChannelRequest(
+            result = run(client(CreateChannelRequest(
                 title=title, about=about, megagroup=False, broadcast=True,
-            ))
+            )))
         except FloodWaitError as e:
             report_job(job_id, "failed", f"FloodWait creating channel: {e.seconds}s")
             return
@@ -279,7 +290,7 @@ def process_job(job: dict):
 
         # 2. Claim username
         try:
-            ok = client(UpdateUsernameRequest(channel=channel, username=username))
+            ok = run(client(UpdateUsernameRequest(channel=channel, username=username)))
             if not ok:
                 report_job(job_id, "failed",
                            "Telegram returned False on UpdateUsername",
@@ -319,11 +330,11 @@ def process_job(job: dict):
             path = download_pfp(pfp_url)
             if path:
                 try:
-                    f = client.upload_file(path)
-                    client(EditPhotoRequest(
+                    f = run(client.upload_file(path))
+                    run(client(EditPhotoRequest(
                         channel=channel,
                         photo=InputChatUploadedPhoto(file=f),
-                    ))
+                    )))
                 except Exception as e:
                     photo_note = f" (photo failed: {e})"
                 finally:
@@ -337,7 +348,7 @@ def process_job(job: dict):
         # 4. Invite link (best-effort)
         invite = f"https://t.me/{username}"
         try:
-            inv = client(ExportChatInviteRequest(peer=channel))
+            inv = run(client(ExportChatInviteRequest(peer=channel)))
             invite = getattr(inv, "link", invite) or invite
         except Exception:
             pass
