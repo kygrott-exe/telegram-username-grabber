@@ -311,3 +311,22 @@ function StatusBadge({ status }: { status: string }) {
       : "outline";
   return <Badge variant={variant as "default" | "destructive" | "secondary" | "outline"}>{status}</Badge>;
 }
+
+function ReasonTag({ reason }: { reason: string | null }) {
+  if (!reason) return null;
+  const map: Record<string, { label: string; className: string }> = {
+    taken: { label: "TAKEN", className: "bg-red-500/15 text-red-500 border-red-500/30" },
+    invalid: { label: "INVALID", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
+    fragment: { label: "ON FRAGMENT", className: "bg-violet-500/15 text-violet-500 border-violet-500/30" },
+    flood: { label: "FLOOD WAIT", className: "bg-orange-500/15 text-orange-500 border-orange-500/30" },
+    other: { label: "ERROR", className: "bg-muted text-muted-foreground border-border" },
+  };
+  const cfg = map[reason] ?? map.other;
+  return (
+    <span
+      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-wider ${cfg.className}`}
+    >
+      {cfg.label}
+    </span>
+  );
+}
