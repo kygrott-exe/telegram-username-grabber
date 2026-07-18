@@ -19,6 +19,7 @@ Environment (see .env.example):
   POLL_INTERVAL    seconds between polls (default 3)
 """
 import os
+import random
 import sys
 import time
 import tempfile
@@ -179,13 +180,16 @@ def _safe_disconnect(client: TelegramClient) -> None:
 # CLAIM FLOW
 # ---------------------------------------------------------------------------
 
-def report_job(job_id, status, message="", channel_id=None, invite_link=None):
+def report_job(job_id, status, message="", channel_id=None, invite_link=None,
+               failure_reason=None):
     payload = {"id": job_id, "status": status,
                "result_message": message[:1900]}
     if channel_id:
         payload["channel_id"] = str(channel_id)
     if invite_link:
         payload["invite_link"] = invite_link
+    if failure_reason:
+        payload["failure_reason"] = failure_reason
     try:
         api_post("/api/public/worker/complete", payload)
     except Exception as e:
@@ -252,30 +256,30 @@ def process_job(job: dict):
                 return
         except UsernameOccupiedError:
             report_job(job_id, "failed", f"@{username} is already taken",
-                       channel_id=channel.id)
+                       channel_id=channel.id, failure_reason="taken")
             return
         except UsernameInvalidError:
             report_job(job_id, "failed", f"@{username} is invalid",
-                       channel_id=channel.id)
+                       channel_id=channel.id, failure_reason="invalid")
             return
         except UsernamePurchaseAvailableError:
             report_job(job_id, "failed",
                        f"@{username} is only available for purchase on Fragment",
-                       channel_id=channel.id)
+                       channel_id=channel.id, failure_reason="fragment")
             return
         except ChannelsAdminPublicTooMuchError:
             report_job(job_id, "failed",
                        "Your account owns too many public channels. Free one first.",
-                       channel_id=channel.id)
+                       channel_id=channel.id, failure_reason="other")
             return
         except FloodWaitError as e:
             report_job(job_id, "failed",
                        f"FloodWait on username: {e.seconds}s",
-                       channel_id=channel.id)
+                       channel_id=channel.id, failure_reason="flood")
             return
         except Exception as e:
             report_job(job_id, "failed", f"UpdateUsername error: {e}",
-                       channel_id=channel.id)
+                       channel_id=channel.id, failure_reason="other")
             return
 
         # 3. Profile photo (best-effort)
@@ -337,9 +341,14 @@ def poll_claim_job():
             traceback.print_exc()
             try:
                 report_job(job["id"], "failed",
-                           "Unexpected worker error (see logs)")
+                           "Unexpected worker error (see logs)",
+                           failure_reason="other")
             except Exception:
                 pass
+        # Pace claims: random 10-15s gap to avoid Telegram spam flags.
+        gap = random.uniform(10.0, 15.0)
+        print(f"[JOB] cooldown {gap:.1f}s before next claim")
+        time.sleep(gap)
         return True
     return False
 

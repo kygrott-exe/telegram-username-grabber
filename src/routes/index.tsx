@@ -93,13 +93,13 @@ function Dashboard({ email }: { email: string | null }) {
   const createMut = useMutation({
     mutationFn: (data: {
       telegram_account_id: string;
-      username: string;
+      usernames: string[];
       channel_title: string;
       channel_description: string;
       pfp_url: string;
     }) => create({ data }),
-    onSuccess: () => {
-      toast.success("Job queued. Worker will pick it up.");
+    onSuccess: (res) => {
+      toast.success(`Queued ${res.count} claim${res.count === 1 ? "" : "s"}. Worker paces 10–15s apart.`);
       qc.invalidateQueries({ queryKey: ["jobs"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
@@ -120,9 +120,18 @@ function Dashboard({ email }: { email: string | null }) {
       return;
     }
     const f = new FormData(e.currentTarget);
+    const raw = String(f.get("usernames") || "");
+    const usernames = raw
+      .split(/[\s,]+/)
+      .map((u) => u.trim().replace(/^@/, ""))
+      .filter(Boolean);
+    if (usernames.length === 0) {
+      toast.error("Enter at least one username");
+      return;
+    }
     createMut.mutate({
       telegram_account_id: accountId,
-      username: String(f.get("username") || ""),
+      usernames,
       channel_title: String(f.get("channel_title") || ""),
       channel_description: String(f.get("channel_description") || ""),
       pfp_url: String(f.get("pfp_url") || ""),
@@ -192,9 +201,18 @@ function Dashboard({ email }: { email: string | null }) {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input id="username" name="username" placeholder="e.g. mychannel" required />
-                  <p className="text-xs text-muted-foreground">5-32 chars, must start with a letter.</p>
+                  <Label htmlFor="usernames">Usernames</Label>
+                  <Textarea
+                    id="usernames"
+                    name="usernames"
+                    placeholder={"mychannel\nanother_one\n@third"}
+                    required
+                    rows={5}
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    One per line (or comma/space separated). Worker paces 10–15s between claims. Max 50 per batch.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="channel_title">Channel title</Label>
@@ -239,7 +257,8 @@ function Dashboard({ email }: { email: string | null }) {
               <div key={j.id} className="rounded-lg border p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <ReasonTag reason={(j as { failure_reason?: string | null }).failure_reason ?? null} />
                       <span className="font-mono text-sm">@{j.username}</span>
                       <StatusBadge status={j.status} />
                     </div>
@@ -291,4 +310,23 @@ function StatusBadge({ status }: { status: string }) {
       ? "secondary"
       : "outline";
   return <Badge variant={variant as "default" | "destructive" | "secondary" | "outline"}>{status}</Badge>;
+}
+
+function ReasonTag({ reason }: { reason: string | null }) {
+  if (!reason) return null;
+  const map: Record<string, { label: string; className: string }> = {
+    taken: { label: "TAKEN", className: "bg-red-500/15 text-red-500 border-red-500/30" },
+    invalid: { label: "INVALID", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
+    fragment: { label: "ON FRAGMENT", className: "bg-violet-500/15 text-violet-500 border-violet-500/30" },
+    flood: { label: "FLOOD WAIT", className: "bg-orange-500/15 text-orange-500 border-orange-500/30" },
+    other: { label: "ERROR", className: "bg-muted text-muted-foreground border-border" },
+  };
+  const cfg = map[reason] ?? map.other;
+  return (
+    <span
+      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-wider ${cfg.className}`}
+    >
+      {cfg.label}
+    </span>
+  );
 }

@@ -1,0 +1,1 @@
+ALTER TABLE public.claim_jobs ADD COLUMN IF NOT EXISTS failure_reason text;

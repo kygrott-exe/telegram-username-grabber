@@ -7,6 +7,7 @@ const CompleteSchema = z.object({
   result_message: z.string().max(2000).optional(),
   channel_id: z.string().max(64).optional(),
   invite_link: z.string().url().max(512).optional(),
+  failure_reason: z.enum(["taken", "invalid", "fragment", "flood", "other"]).optional(),
 });
 
 export const Route = createFileRoute("/api/public/worker/complete")({
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/api/public/worker/complete")({
         const raw = await request.json().catch(() => null);
         const parsed = CompleteSchema.safeParse(raw);
         if (!parsed.success) return json({ error: parsed.error.message }, 400);
-        const { id, status, result_message, channel_id, invite_link } = parsed.data;
+        const { id, status, result_message, channel_id, invite_link, failure_reason } = parsed.data;
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { error } = await supabaseAdmin
@@ -31,6 +32,7 @@ export const Route = createFileRoute("/api/public/worker/complete")({
             result_message: result_message ?? null,
             channel_id: channel_id ?? null,
             invite_link: invite_link ?? null,
+            failure_reason: status === "failed" ? failure_reason ?? "other" : null,
             claimed_at: status === "done" ? new Date().toISOString() : null,
           })
           .eq("id", id);
