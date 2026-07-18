@@ -26,11 +26,29 @@ import tempfile
 import traceback
 from pathlib import Path
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv(Path(__file__).with_name(".env"))
-except ImportError:
-    pass
+def load_worker_env() -> None:
+    """Load worker/.env even when pm2 starts the script from repo root."""
+    env_path = Path(__file__).with_name(".env")
+
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(env_path)
+        return
+    except ImportError:
+        pass
+
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_worker_env()
 
 
 import requests
@@ -57,7 +75,12 @@ from telethon.tl.functions.messages import ExportChatInviteRequest
 from telethon.tl.types import InputChatUploadedPhoto
 
 
-APP_BASE_URL = os.environ["APP_BASE_URL"].rstrip("/")
+APP_BASE_URL = os.environ.get("APP_BASE_URL", os.environ.get("APP_URL", "")).rstrip("/")
+if not APP_BASE_URL:
+    raise RuntimeError(
+        "Missing APP_BASE_URL in worker/.env. Add: "
+        "APP_BASE_URL=https://telegram-username-grabber.lovable.app"
+    )
 WORKER_TOKEN = os.environ["WORKER_TOKEN"]
 API_ID = int(os.environ["TG_API_ID"])
 API_HASH = os.environ["TG_API_HASH"]
