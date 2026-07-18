@@ -401,7 +401,16 @@ function Dashboard({ email }: { email: string | null }) {
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="pfp_url">Profile photo URL (optional)</Label>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Label htmlFor="pfp_url">Profile photo URL (optional)</Label>
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, pfp_url: SAMPLE_PFP }))}
+                        className="text-[11px] font-medium uppercase tracking-widest text-primary hover:underline"
+                      >
+                        Use hankie pfp
+                      </button>
+                    </div>
                     <Input
                       id="pfp_url"
                       type="url"
