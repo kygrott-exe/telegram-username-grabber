@@ -93,13 +93,13 @@ function Dashboard({ email }: { email: string | null }) {
   const createMut = useMutation({
     mutationFn: (data: {
       telegram_account_id: string;
-      username: string;
+      usernames: string[];
       channel_title: string;
       channel_description: string;
       pfp_url: string;
     }) => create({ data }),
-    onSuccess: () => {
-      toast.success("Job queued. Worker will pick it up.");
+    onSuccess: (res) => {
+      toast.success(`Queued ${res.count} claim${res.count === 1 ? "" : "s"}. Worker paces 10–15s apart.`);
       qc.invalidateQueries({ queryKey: ["jobs"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
@@ -120,9 +120,18 @@ function Dashboard({ email }: { email: string | null }) {
       return;
     }
     const f = new FormData(e.currentTarget);
+    const raw = String(f.get("usernames") || "");
+    const usernames = raw
+      .split(/[\s,]+/)
+      .map((u) => u.trim().replace(/^@/, ""))
+      .filter(Boolean);
+    if (usernames.length === 0) {
+      toast.error("Enter at least one username");
+      return;
+    }
     createMut.mutate({
       telegram_account_id: accountId,
-      username: String(f.get("username") || ""),
+      usernames,
       channel_title: String(f.get("channel_title") || ""),
       channel_description: String(f.get("channel_description") || ""),
       pfp_url: String(f.get("pfp_url") || ""),
