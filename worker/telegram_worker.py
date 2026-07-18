@@ -18,6 +18,7 @@ Environment (see .env.example):
   TG_API_HASH      from https://my.telegram.org
   POLL_INTERVAL    seconds between polls (default 3)
 """
+import asyncio
 import os
 import random
 import sys
