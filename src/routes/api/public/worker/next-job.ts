@@ -41,6 +41,7 @@ export const Route = createFileRoute("/api/public/worker/next-job")({
             .from("claim_jobs")
             .update({
               status: "failed",
+              failure_reason: "other",
               result_message: "No Telegram account attached to this job.",
             })
             .eq("id", claimed.id);
@@ -58,6 +59,7 @@ export const Route = createFileRoute("/api/public/worker/next-job")({
             .from("claim_jobs")
             .update({
               status: "failed",
+              failure_reason: "other",
               result_message: "Telegram account is missing or inactive.",
             })
             .eq("id", claimed.id);
@@ -73,6 +75,7 @@ export const Route = createFileRoute("/api/public/worker/next-job")({
             .from("claim_jobs")
             .update({
               status: "failed",
+              failure_reason: "other",
               result_message: `Session decrypt failed: ${(e as Error).message}`,
             })
             .eq("id", claimed.id);
