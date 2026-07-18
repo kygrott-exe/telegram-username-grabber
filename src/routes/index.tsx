@@ -6,6 +6,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { createJob, deleteJob, listJobs } from "@/lib/jobs.functions";
 import { listAccounts } from "@/lib/telegram-accounts.functions";
 import { listTemplates, saveTemplate, deleteTemplate } from "@/lib/templates.functions";
+import hankiePfp from "@/assets/hankie-pfp.png.asset.json";
+import hankieBanner from "@/assets/hankie-banner.png.asset.json";
+
+const ABSOLUTE_BASE =
+  typeof window !== "undefined" ? window.location.origin : "https://telegram-username-grabber.lovable.app";
+const SAMPLE_PFP = `https://telegram-username-grabber.lovable.app${hankiePfp.url}`;
+const SAMPLE_BANNER = `https://telegram-username-grabber.lovable.app${hankieBanner.url}`;
+void ABSOLUTE_BASE;
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -393,7 +401,16 @@ function Dashboard({ email }: { email: string | null }) {
                     />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="pfp_url">Profile photo URL (optional)</Label>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Label htmlFor="pfp_url">Profile photo URL (optional)</Label>
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, pfp_url: SAMPLE_PFP }))}
+                        className="text-[11px] font-medium uppercase tracking-widest text-primary hover:underline"
+                      >
+                        Use hankie pfp
+                      </button>
+                    </div>
                     <Input
                       id="pfp_url"
                       type="url"
@@ -420,6 +437,15 @@ function Dashboard({ email }: { email: string | null }) {
                     />
                   </div>
                   <div className="space-y-2">
+                    <div className="flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, first_post_media_url: SAMPLE_BANNER }))}
+                        className="text-[11px] font-medium uppercase tracking-widest text-primary hover:underline"
+                      >
+                        Use hankie banner
+                      </button>
+                    </div>
                     <Label htmlFor="first_post_media_url" className="sr-only">First post media URL</Label>
                     <Input
                       id="first_post_media_url"
