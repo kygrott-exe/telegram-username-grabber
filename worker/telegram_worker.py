@@ -211,7 +211,9 @@ def _cleanup(task_id: str) -> None:
 
 def _safe_disconnect(client: TelegramClient) -> None:
     try:
-        client.disconnect()
+        result = client.disconnect()
+        if asyncio.iscoroutine(result):
+            run(result)
     except Exception:
         pass
 
