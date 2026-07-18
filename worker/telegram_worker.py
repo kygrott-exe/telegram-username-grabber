@@ -341,9 +341,14 @@ def poll_claim_job():
             traceback.print_exc()
             try:
                 report_job(job["id"], "failed",
-                           "Unexpected worker error (see logs)")
+                           "Unexpected worker error (see logs)",
+                           failure_reason="other")
             except Exception:
                 pass
+        # Pace claims: random 10-15s gap to avoid Telegram spam flags.
+        gap = random.uniform(10.0, 15.0)
+        print(f"[JOB] cooldown {gap:.1f}s before next claim")
+        time.sleep(gap)
         return True
     return False
 
