@@ -22,6 +22,8 @@ export type Database = {
           claimed_at: string | null
           created_at: string
           failure_reason: string | null
+          first_post_media_url: string | null
+          first_post_text: string
           id: string
           invite_link: string | null
           pfp_url: string | null
@@ -39,6 +41,8 @@ export type Database = {
           claimed_at?: string | null
           created_at?: string
           failure_reason?: string | null
+          first_post_media_url?: string | null
+          first_post_text?: string
           id?: string
           invite_link?: string | null
           pfp_url?: string | null
@@ -56,6 +60,8 @@ export type Database = {
           claimed_at?: string | null
           created_at?: string
           failure_reason?: string | null
+          first_post_media_url?: string | null
+          first_post_text?: string
           id?: string
           invite_link?: string | null
           pfp_url?: string | null
@@ -75,6 +81,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      claim_templates: {
+        Row: {
+          channel_description: string
+          channel_title: string
+          created_at: string
+          first_post_media_url: string | null
+          first_post_text: string
+          id: string
+          name: string
+          pfp_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_description?: string
+          channel_title?: string
+          created_at?: string
+          first_post_media_url?: string | null
+          first_post_text?: string
+          id?: string
+          name: string
+          pfp_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_description?: string
+          channel_title?: string
+          created_at?: string
+          first_post_media_url?: string | null
+          first_post_text?: string
+          id?: string
+          name?: string
+          pfp_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       telegram_accounts: {
         Row: {

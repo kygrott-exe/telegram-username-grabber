@@ -21,6 +21,8 @@ const CreateJobSchema = z.object({
   channel_title: z.string().trim().min(1).max(128),
   channel_description: z.string().trim().max(255).optional().default(""),
   pfp_url: z.string().trim().url().optional().or(z.literal("")),
+  first_post_text: z.string().max(4000).optional().default(""),
+  first_post_media_url: z.string().trim().url().max(1024).optional().or(z.literal("")),
 });
 
 export const createJob = createServerFn({ method: "POST" })
@@ -48,6 +50,8 @@ export const createJob = createServerFn({ method: "POST" })
       channel_title: data.channel_title,
       channel_description: data.channel_description ?? "",
       pfp_url: data.pfp_url || null,
+      first_post_text: data.first_post_text ?? "",
+      first_post_media_url: data.first_post_media_url || null,
     }));
 
     const { data: inserted, error } = await supabase
@@ -57,6 +61,7 @@ export const createJob = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { count: inserted?.length ?? 0 };
   });
+
 
 export const listJobs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

@@ -238,17 +238,27 @@ def report_job(job_id, status, message="", channel_id=None, invite_link=None,
         print(f"[WARN] report_job failed: {e}", file=sys.stderr)
 
 
-def download_pfp(url: str):
+def download_media(url: str):
     try:
-        r = requests.get(url, timeout=20)
+        r = requests.get(url, timeout=60)
         r.raise_for_status()
-        suffix = ".png" if "png" in r.headers.get("content-type", "").lower() else ".jpg"
+        ctype = r.headers.get("content-type", "").lower()
+        if "png" in ctype:
+            suffix = ".png"
+        elif "gif" in ctype:
+            suffix = ".gif"
+        elif "mp4" in ctype or "video" in ctype:
+            suffix = ".mp4"
+        elif "webp" in ctype:
+            suffix = ".webp"
+        else:
+            suffix = ".jpg"
         fd, path = tempfile.mkstemp(suffix=suffix)
         with os.fdopen(fd, "wb") as f:
             f.write(r.content)
         return path
     except Exception as e:
-        print(f"[WARN] pfp download failed: {e}", file=sys.stderr)
+        print(f"[WARN] media download failed: {e}", file=sys.stderr)
         return None
 
 
@@ -258,6 +268,8 @@ def process_job(job: dict):
     title = job["channel_title"]
     about = job.get("channel_description") or ""
     pfp_url = job.get("pfp_url")
+    first_post_text = (job.get("first_post_text") or "").strip()
+    first_post_media = job.get("first_post_media_url")
     session_str = job.get("account_session")
     phone = job.get("account_phone", "?")
 
@@ -327,7 +339,7 @@ def process_job(job: dict):
         # 3. Profile photo (best-effort)
         photo_note = ""
         if pfp_url:
-            path = download_pfp(pfp_url)
+            path = download_media(pfp_url)
             if path:
                 try:
                     f = run(client.upload_file(path))
@@ -345,7 +357,29 @@ def process_job(job: dict):
             else:
                 photo_note = " (photo download failed)"
 
-        # 4. Invite link (best-effort)
+        # 4. First post (best-effort)
+        post_note = ""
+        if first_post_text or first_post_media:
+            media_path = None
+            try:
+                if first_post_media:
+                    media_path = download_media(first_post_media)
+                if media_path:
+                    run(client.send_file(channel, media_path,
+                                         caption=first_post_text or None))
+                elif first_post_text:
+                    run(client.send_message(channel, first_post_text))
+                post_note = " First post sent."
+            except Exception as e:
+                post_note = f" (first post failed: {e})"
+            finally:
+                if media_path:
+                    try:
+                        os.unlink(media_path)
+                    except OSError:
+                        pass
+
+        # 5. Invite link (best-effort)
         invite = f"https://t.me/{username}"
         try:
             inv = run(client(ExportChatInviteRequest(peer=channel)))
@@ -354,10 +388,11 @@ def process_job(job: dict):
             pass
 
         report_job(job_id, "done",
-                   f"Claimed @{username}.{photo_note}",
+                   f"Claimed @{username}.{photo_note}{post_note}",
                    channel_id=channel.id, invite_link=invite)
     finally:
         _safe_disconnect(client)
+
 
 
 # ---------------------------------------------------------------------------
