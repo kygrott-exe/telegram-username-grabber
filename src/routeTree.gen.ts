@@ -9,38 +9,88 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicWorkerNextJobRouteImport } from './routes/api/public/worker/next-job'
+import { Route as ApiPublicWorkerCompleteRouteImport } from './routes/api/public/worker/complete'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWorkerNextJobRoute = ApiPublicWorkerNextJobRouteImport.update({
+  id: '/api/public/worker/next-job',
+  path: '/api/public/worker/next-job',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWorkerCompleteRoute = ApiPublicWorkerCompleteRouteImport.update({
+  id: '/api/public/worker/complete',
+  path: '/api/public/worker/complete',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/api/public/worker/complete': typeof ApiPublicWorkerCompleteRoute
+  '/api/public/worker/next-job': typeof ApiPublicWorkerNextJobRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/api/public/worker/complete': typeof ApiPublicWorkerCompleteRoute
+  '/api/public/worker/next-job': typeof ApiPublicWorkerNextJobRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/api/public/worker/complete': typeof ApiPublicWorkerCompleteRoute
+  '/api/public/worker/next-job': typeof ApiPublicWorkerNextJobRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/api/public/worker/complete'
+    | '/api/public/worker/next-job'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/api/public/worker/complete'
+    | '/api/public/worker/next-job'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/api/public/worker/complete'
+    | '/api/public/worker/next-job'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
+  ApiPublicWorkerCompleteRoute: typeof ApiPublicWorkerCompleteRoute
+  ApiPublicWorkerNextJobRoute: typeof ApiPublicWorkerNextJobRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +98,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/worker/next-job': {
+      id: '/api/public/worker/next-job'
+      path: '/api/public/worker/next-job'
+      fullPath: '/api/public/worker/next-job'
+      preLoaderRoute: typeof ApiPublicWorkerNextJobRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/worker/complete': {
+      id: '/api/public/worker/complete'
+      path: '/api/public/worker/complete'
+      fullPath: '/api/public/worker/complete'
+      preLoaderRoute: typeof ApiPublicWorkerCompleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
+  ApiPublicWorkerCompleteRoute: ApiPublicWorkerCompleteRoute,
+  ApiPublicWorkerNextJobRoute: ApiPublicWorkerNextJobRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
