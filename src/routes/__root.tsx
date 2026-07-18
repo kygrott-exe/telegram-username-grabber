@@ -84,6 +84,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Queue Telegram channel username claims with title, description, and profile photo." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Telegram Username Claimer" },
+      { name: "twitter:description", content: "Queue Telegram channel username claims with title, description, and profile photo." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/90d31aef-2de2-4454-9373-f0364332704b/id-preview-9f4a6f1e--f70afb84-469c-42a2-864f-f1552b1800d1.lovable.app-1784359431411.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/90d31aef-2de2-4454-9373-f0364332704b/id-preview-9f4a6f1e--f70afb84-469c-42a2-864f-f1552b1800d1.lovable.app-1784359431411.png" },
     ],
     links: [
       {
