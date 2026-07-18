@@ -6,6 +6,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { createJob, deleteJob, listJobs } from "@/lib/jobs.functions";
 import { listAccounts } from "@/lib/telegram-accounts.functions";
 import { listTemplates, saveTemplate, deleteTemplate } from "@/lib/templates.functions";
+import hankiePfp from "@/assets/hankie-pfp.png.asset.json";
+import hankieBanner from "@/assets/hankie-banner.png.asset.json";
+
+const ABSOLUTE_BASE =
+  typeof window !== "undefined" ? window.location.origin : "https://telegram-username-grabber.lovable.app";
+const SAMPLE_PFP = `https://telegram-username-grabber.lovable.app${hankiePfp.url}`;
+const SAMPLE_BANNER = `https://telegram-username-grabber.lovable.app${hankieBanner.url}`;
+void ABSOLUTE_BASE;
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
