@@ -6,7 +6,8 @@ const PhoneSchema = z.object({
   phone: z
     .string()
     .trim()
-    .regex(/^\+?\d{6,20}$/, "Phone must be digits, optional leading +"),
+    .transform((v) => v.replace(/[\s\-()]/g, ""))
+    .pipe(z.string().regex(/^\+?\d{6,20}$/, "Phone must be digits, optional leading +")),
 });
 
 export const listAccounts = createServerFn({ method: "GET" })
