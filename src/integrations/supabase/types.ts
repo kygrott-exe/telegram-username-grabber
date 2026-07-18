@@ -14,7 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      claim_jobs: {
+        Row: {
+          channel_description: string
+          channel_id: string | null
+          channel_title: string
+          claimed_at: string | null
+          created_at: string
+          id: string
+          invite_link: string | null
+          pfp_url: string | null
+          result_message: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          channel_description?: string
+          channel_id?: string | null
+          channel_title: string
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          invite_link?: string | null
+          pfp_url?: string | null
+          result_message?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          channel_description?: string
+          channel_id?: string | null
+          channel_title?: string
+          claimed_at?: string | null
+          created_at?: string
+          id?: string
+          invite_link?: string | null
+          pfp_url?: string | null
+          result_message?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
