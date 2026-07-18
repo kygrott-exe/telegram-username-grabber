@@ -269,17 +269,17 @@ def process_job(job: dict):
 
     client = TelegramClient(StringSession(session_str), API_ID, API_HASH)
     try:
-        client.connect()
-        if not client.is_user_authorized():
+        run(client.connect())
+        if not run(client.is_user_authorized()):
             report_job(job_id, "failed",
                        "Telegram session is no longer authorized. Reconnect the account.")
             return
 
         # 1. Create channel
         try:
-            result = client(CreateChannelRequest(
+            result = run(client(CreateChannelRequest(
                 title=title, about=about, megagroup=False, broadcast=True,
-            ))
+            )))
         except FloodWaitError as e:
             report_job(job_id, "failed", f"FloodWait creating channel: {e.seconds}s")
             return
@@ -290,7 +290,7 @@ def process_job(job: dict):
 
         # 2. Claim username
         try:
-            ok = client(UpdateUsernameRequest(channel=channel, username=username))
+            ok = run(client(UpdateUsernameRequest(channel=channel, username=username)))
             if not ok:
                 report_job(job_id, "failed",
                            "Telegram returned False on UpdateUsername",
@@ -330,11 +330,11 @@ def process_job(job: dict):
             path = download_pfp(pfp_url)
             if path:
                 try:
-                    f = client.upload_file(path)
-                    client(EditPhotoRequest(
+                    f = run(client.upload_file(path))
+                    run(client(EditPhotoRequest(
                         channel=channel,
                         photo=InputChatUploadedPhoto(file=f),
-                    ))
+                    )))
                 except Exception as e:
                     photo_note = f" (photo failed: {e})"
                 finally:
@@ -348,7 +348,7 @@ def process_job(job: dict):
         # 4. Invite link (best-effort)
         invite = f"https://t.me/{username}"
         try:
-            inv = client(ExportChatInviteRequest(peer=channel))
+            inv = run(client(ExportChatInviteRequest(peer=channel)))
             invite = getattr(inv, "link", invite) or invite
         except Exception:
             pass
