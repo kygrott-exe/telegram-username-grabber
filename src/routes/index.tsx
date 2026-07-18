@@ -201,9 +201,18 @@ function Dashboard({ email }: { email: string | null }) {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input id="username" name="username" placeholder="e.g. mychannel" required />
-                  <p className="text-xs text-muted-foreground">5-32 chars, must start with a letter.</p>
+                  <Label htmlFor="usernames">Usernames</Label>
+                  <Textarea
+                    id="usernames"
+                    name="usernames"
+                    placeholder={"mychannel\nanother_one\n@third"}
+                    required
+                    rows={5}
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    One per line (or comma/space separated). Worker paces 10–15s between claims. Max 50 per batch.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="channel_title">Channel title</Label>
