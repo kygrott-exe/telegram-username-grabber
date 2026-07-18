@@ -95,6 +95,14 @@ HEADERS = {
 # In-memory: login_request_id -> TelegramClient waiting between code / password steps
 _pending_clients: dict[str, TelegramClient] = {}
 
+# Single persistent event loop for all Telethon calls (clients persist across polls).
+_loop = asyncio.new_event_loop()
+asyncio.set_event_loop(_loop)
+
+
+def run(coro):
+    return _loop.run_until_complete(coro)
+
 
 def api_post(path: str, payload: dict) -> dict:
     r = requests.post(f"{APP_BASE_URL}{path}", headers=HEADERS,
