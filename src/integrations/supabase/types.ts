@@ -21,6 +21,7 @@ export type Database = {
           channel_title: string
           claimed_at: string | null
           created_at: string
+          failure_reason: string | null
           id: string
           invite_link: string | null
           pfp_url: string | null
@@ -37,6 +38,7 @@ export type Database = {
           channel_title: string
           claimed_at?: string | null
           created_at?: string
+          failure_reason?: string | null
           id?: string
           invite_link?: string | null
           pfp_url?: string | null
@@ -53,6 +55,7 @@ export type Database = {
           channel_title?: string
           claimed_at?: string | null
           created_at?: string
+          failure_reason?: string | null
           id?: string
           invite_link?: string | null
           pfp_url?: string | null
