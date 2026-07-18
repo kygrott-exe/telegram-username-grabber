@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const CreateJobSchema = z.object({
+  telegram_account_id: z.string().uuid(),
   username: z
     .string()
     .trim()
@@ -19,10 +20,22 @@ export const createJob = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => CreateJobSchema.parse(raw))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
+    // Confirm the account belongs to this user (RLS also enforces it, but fail fast).
+    const { data: account, error: accErr } = await supabase
+      .from("telegram_accounts")
+      .select("id, status")
+      .eq("id", data.telegram_account_id)
+      .maybeSingle();
+    if (accErr) throw new Error(accErr.message);
+    if (!account) throw new Error("Telegram account not found");
+    if (account.status !== "active") throw new Error("Telegram account is not active");
+
     const { data: row, error } = await supabase
       .from("claim_jobs")
       .insert({
         user_id: userId,
+        telegram_account_id: data.telegram_account_id,
         username: data.username.replace(/^@/, ""),
         channel_title: data.channel_title,
         channel_description: data.channel_description ?? "",

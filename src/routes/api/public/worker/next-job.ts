@@ -34,7 +34,58 @@ export const Route = createFileRoute("/api/public/worker/next-job")({
           .maybeSingle();
         if (updErr) return json({ error: updErr.message }, 500);
         if (!claimed) return json({ job: null }); // race, another worker took it
-        return json({ job: claimed });
+
+        // Attach the Telegram account session so the worker can sign in as the user.
+        if (!claimed.telegram_account_id) {
+          await supabaseAdmin
+            .from("claim_jobs")
+            .update({
+              status: "failed",
+              result_message: "No Telegram account attached to this job.",
+            })
+            .eq("id", claimed.id);
+          return json({ job: null });
+        }
+
+        const { data: account, error: accErr } = await supabaseAdmin
+          .from("telegram_accounts")
+          .select("id, phone, session_ciphertext, status")
+          .eq("id", claimed.telegram_account_id)
+          .maybeSingle();
+        if (accErr) return json({ error: accErr.message }, 500);
+        if (!account || account.status !== "active") {
+          await supabaseAdmin
+            .from("claim_jobs")
+            .update({
+              status: "failed",
+              result_message: "Telegram account is missing or inactive.",
+            })
+            .eq("id", claimed.id);
+          return json({ job: null });
+        }
+
+        const { decryptString } = await import("@/lib/session-crypto.server");
+        let session: string;
+        try {
+          session = decryptString(account.session_ciphertext as string);
+        } catch (e) {
+          await supabaseAdmin
+            .from("claim_jobs")
+            .update({
+              status: "failed",
+              result_message: `Session decrypt failed: ${(e as Error).message}`,
+            })
+            .eq("id", claimed.id);
+          return json({ job: null });
+        }
+
+        return json({
+          job: {
+            ...claimed,
+            account_phone: account.phone,
+            account_session: session,
+          },
+        });
       },
     },
   },

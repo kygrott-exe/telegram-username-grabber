@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiPublicBootstrapAdminRouteImport } from './routes/api/public/bootstrap-admin'
+import { Route as ApiPublicWorkerNextLoginStepRouteImport } from './routes/api/public/worker/next-login-step'
 import { Route as ApiPublicWorkerNextJobRouteImport } from './routes/api/public/worker/next-job'
+import { Route as ApiPublicWorkerCompleteLoginStepRouteImport } from './routes/api/public/worker/complete-login-step'
 import { Route as ApiPublicWorkerCompleteRouteImport } from './routes/api/public/worker/complete'
 
 const AuthRoute = AuthRouteImport.update({
@@ -30,11 +32,23 @@ const ApiPublicBootstrapAdminRoute = ApiPublicBootstrapAdminRouteImport.update({
   path: '/api/public/bootstrap-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWorkerNextLoginStepRoute =
+  ApiPublicWorkerNextLoginStepRouteImport.update({
+    id: '/api/public/worker/next-login-step',
+    path: '/api/public/worker/next-login-step',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWorkerNextJobRoute = ApiPublicWorkerNextJobRouteImport.update({
   id: '/api/public/worker/next-job',
   path: '/api/public/worker/next-job',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWorkerCompleteLoginStepRoute =
+  ApiPublicWorkerCompleteLoginStepRouteImport.update({
+    id: '/api/public/worker/complete-login-step',
+    path: '/api/public/worker/complete-login-step',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWorkerCompleteRoute = ApiPublicWorkerCompleteRouteImport.update({
   id: '/api/public/worker/complete',
   path: '/api/public/worker/complete',
@@ -46,14 +60,18 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/api/public/bootstrap-admin': typeof ApiPublicBootstrapAdminRoute
   '/api/public/worker/complete': typeof ApiPublicWorkerCompleteRoute
+  '/api/public/worker/complete-login-step': typeof ApiPublicWorkerCompleteLoginStepRoute
   '/api/public/worker/next-job': typeof ApiPublicWorkerNextJobRoute
+  '/api/public/worker/next-login-step': typeof ApiPublicWorkerNextLoginStepRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/api/public/bootstrap-admin': typeof ApiPublicBootstrapAdminRoute
   '/api/public/worker/complete': typeof ApiPublicWorkerCompleteRoute
+  '/api/public/worker/complete-login-step': typeof ApiPublicWorkerCompleteLoginStepRoute
   '/api/public/worker/next-job': typeof ApiPublicWorkerNextJobRoute
+  '/api/public/worker/next-login-step': typeof ApiPublicWorkerNextLoginStepRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,7 +79,9 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/api/public/bootstrap-admin': typeof ApiPublicBootstrapAdminRoute
   '/api/public/worker/complete': typeof ApiPublicWorkerCompleteRoute
+  '/api/public/worker/complete-login-step': typeof ApiPublicWorkerCompleteLoginStepRoute
   '/api/public/worker/next-job': typeof ApiPublicWorkerNextJobRoute
+  '/api/public/worker/next-login-step': typeof ApiPublicWorkerNextLoginStepRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -70,21 +90,27 @@ export interface FileRouteTypes {
     | '/auth'
     | '/api/public/bootstrap-admin'
     | '/api/public/worker/complete'
+    | '/api/public/worker/complete-login-step'
     | '/api/public/worker/next-job'
+    | '/api/public/worker/next-login-step'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/api/public/bootstrap-admin'
     | '/api/public/worker/complete'
+    | '/api/public/worker/complete-login-step'
     | '/api/public/worker/next-job'
+    | '/api/public/worker/next-login-step'
   id:
     | '__root__'
     | '/'
     | '/auth'
     | '/api/public/bootstrap-admin'
     | '/api/public/worker/complete'
+    | '/api/public/worker/complete-login-step'
     | '/api/public/worker/next-job'
+    | '/api/public/worker/next-login-step'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -92,7 +118,9 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ApiPublicBootstrapAdminRoute: typeof ApiPublicBootstrapAdminRoute
   ApiPublicWorkerCompleteRoute: typeof ApiPublicWorkerCompleteRoute
+  ApiPublicWorkerCompleteLoginStepRoute: typeof ApiPublicWorkerCompleteLoginStepRoute
   ApiPublicWorkerNextJobRoute: typeof ApiPublicWorkerNextJobRoute
+  ApiPublicWorkerNextLoginStepRoute: typeof ApiPublicWorkerNextLoginStepRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -118,11 +146,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBootstrapAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/worker/next-login-step': {
+      id: '/api/public/worker/next-login-step'
+      path: '/api/public/worker/next-login-step'
+      fullPath: '/api/public/worker/next-login-step'
+      preLoaderRoute: typeof ApiPublicWorkerNextLoginStepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/worker/next-job': {
       id: '/api/public/worker/next-job'
       path: '/api/public/worker/next-job'
       fullPath: '/api/public/worker/next-job'
       preLoaderRoute: typeof ApiPublicWorkerNextJobRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/worker/complete-login-step': {
+      id: '/api/public/worker/complete-login-step'
+      path: '/api/public/worker/complete-login-step'
+      fullPath: '/api/public/worker/complete-login-step'
+      preLoaderRoute: typeof ApiPublicWorkerCompleteLoginStepRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/worker/complete': {
@@ -140,7 +182,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ApiPublicBootstrapAdminRoute: ApiPublicBootstrapAdminRoute,
   ApiPublicWorkerCompleteRoute: ApiPublicWorkerCompleteRoute,
+  ApiPublicWorkerCompleteLoginStepRoute: ApiPublicWorkerCompleteLoginStepRoute,
   ApiPublicWorkerNextJobRoute: ApiPublicWorkerNextJobRoute,
+  ApiPublicWorkerNextLoginStepRoute: ApiPublicWorkerNextLoginStepRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
