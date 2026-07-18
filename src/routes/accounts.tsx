@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,10 +12,10 @@ import {
   submitCode,
   submitPassword,
 } from "@/lib/telegram-accounts.functions";
+import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -26,7 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, UserRound } from "lucide-react";
 
 export const Route = createFileRoute("/accounts")({
   head: () => ({
@@ -41,26 +41,30 @@ export const Route = createFileRoute("/accounts")({
 function AccountsPage() {
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) navigate({ to: "/auth" });
-      else setReady(true);
+      else {
+        setEmail(data.session.user.email ?? null);
+        setReady(true);
+      }
     });
   }, [navigate]);
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="flex min-h-dvh items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Loading" />
       </div>
     );
   }
 
-  return <AccountsInner />;
+  return <AccountsInner email={email} />;
 }
 
-function AccountsInner() {
+function AccountsInner({ email }: { email: string | null }) {
   const qc = useQueryClient();
   const list = useServerFn(listAccounts);
   const del = useServerFn(deleteAccount);
@@ -81,79 +85,95 @@ function AccountsInner() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
+  const accounts = accountsQuery.data ?? [];
+
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">Telegram Accounts</h1>
-            <p className="text-xs text-muted-foreground">
-              Connect the accounts the worker will use to claim usernames.
-            </p>
+    <AppShell email={email}>
+      <main className="mx-auto max-w-4xl px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
+        <section className="glass mb-6 rounded-3xl p-6 shadow-[var(--shadow-elegant)]">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:flex-wrap sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-widest text-muted-foreground">Telegram</p>
+              <h1 className="mt-1 font-heading text-2xl font-bold sm:text-3xl">
+                Connected <span className="text-gradient">accounts</span>
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                The worker uses these to claim usernames on your behalf.
+              </p>
+            </div>
+            <Button
+              onClick={() => setDialogOpen(true)}
+              className="h-10 shrink-0 rounded-full bg-[image:var(--gradient-brand)] px-4 text-primary-foreground shadow-[var(--shadow-glow)] hover:opacity-95"
+            >
+              <Plus className="mr-2 h-4 w-4" aria-hidden /> Connect account
+            </Button>
           </div>
-          <div className="flex items-center gap-2">
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-              ← Dashboard
-            </Link>
-          </div>
-        </div>
-      </header>
+        </section>
 
-      <main className="mx-auto max-w-4xl px-6 py-8">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-medium">Your accounts</h2>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Connect account
-          </Button>
-        </div>
-
-        <Card>
-          <CardContent className="p-4">
-            {accountsQuery.isLoading && (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            )}
-            {accountsQuery.data && accountsQuery.data.length === 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">
+        <section aria-labelledby="accts-heading" className="glass rounded-3xl p-5 shadow-[var(--shadow-elegant)] sm:p-6">
+          <h2 id="accts-heading" className="sr-only">Your accounts</h2>
+          {accountsQuery.isLoading && (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading" />
+            </div>
+          )}
+          {!accountsQuery.isLoading && accounts.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-white/15 py-14 text-center">
+              <UserRound className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden />
+              <p className="mt-3 text-sm text-muted-foreground">
                 No Telegram accounts yet. Connect one to start claiming.
               </p>
-            )}
-            <div className="space-y-2">
-              {accountsQuery.data?.map((a) => (
-                <div
-                  key={a.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
+            </div>
+          )}
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {accounts.map((a) => (
+              <li
+                key={a.id}
+                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.06]"
+              >
+                <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[image:var(--gradient-brand)] font-heading text-sm font-semibold text-primary-foreground">
+                    {(a.first_name || "T").slice(0, 1).toUpperCase()}
+                  </span>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{a.first_name || "Telegram user"}</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate font-medium">{a.first_name || "Telegram user"}</span>
                       {a.tg_username && (
-                        <span className="text-sm text-muted-foreground">@{a.tg_username}</span>
+                        <span className="truncate text-sm text-muted-foreground">@{a.tg_username}</span>
                       )}
-                      <Badge variant={a.status === "active" ? "default" : "outline"}>{a.status}</Badge>
+                      <Badge
+                        variant="outline"
+                        className={`rounded-full px-2 py-0 text-[10px] uppercase tracking-widest ${
+                          a.status === "active"
+                            ? "border-emerald-400/30 bg-emerald-500/15 text-emerald-300"
+                            : "border-white/15 bg-white/5 text-muted-foreground"
+                        }`}
+                      >
+                        {a.status}
+                      </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
                       {a.phone} · id {a.tg_user_id ?? "?"}
                     </p>
                   </div>
                   <Button
                     size="icon"
                     variant="ghost"
+                    className="h-9 w-9 shrink-0 opacity-60 hover:opacity-100"
                     onClick={() => deleteMut.mutate(a.id)}
                     disabled={deleteMut.isPending}
+                    aria-label={`Remove ${a.first_name || a.phone}`}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" aria-hidden />
                   </Button>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-        <p className="mt-4 text-xs text-muted-foreground">
-          Make sure the Python worker is running — it drives the Telegram login and stores
-          the session encrypted in the database.
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          The Python worker drives the Telegram login and stores the session encrypted.
         </p>
       </main>
 
@@ -165,7 +185,7 @@ function AccountsInner() {
           qc.invalidateQueries({ queryKey: ["telegram-accounts"] });
         }}
       />
-    </div>
+    </AppShell>
   );
 }
 
@@ -219,7 +239,6 @@ function ConnectDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Poll for status transitions while a request is in flight
   useEffect(() => {
     if (!requestId) return;
     stopPolling();
@@ -258,7 +277,6 @@ function ConnectDialog({
     try {
       const res = await start({ data: { phone } });
       setRequestId(res.request_id);
-      // step stays "phone" until poller sees awaiting_code
     } catch (e) {
       setBusy(false);
       setError(e instanceof Error ? e.message : "Failed to start");
@@ -271,7 +289,6 @@ function ConnectDialog({
     setBusy(true);
     try {
       await sendCode({ data: { request_id: requestId, code } });
-      // wait for worker to advance status
     } catch (e) {
       setBusy(false);
       setError(e instanceof Error ? e.message : "Failed");
@@ -301,15 +318,43 @@ function ConnectDialog({
     onOpenChange(v);
   };
 
+  const stepIndex = { phone: 0, code: 1, password: 2, done: 3 }[step];
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="rounded-3xl">
         <DialogHeader>
-          <DialogTitle>Connect Telegram account</DialogTitle>
+          <DialogTitle className="font-heading text-xl">Connect Telegram account</DialogTitle>
           <DialogDescription>
             The worker will send a login code to your Telegram app. Enter it here.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Stepper */}
+        <ol className="my-2 flex items-center gap-2" aria-label="Progress">
+          {["Phone", "Code", "2FA"].map((label, i) => {
+            const active = stepIndex === i;
+            const done = stepIndex > i;
+            return (
+              <li key={label} className="flex flex-1 items-center gap-2">
+                <span
+                  className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-semibold ${
+                    done
+                      ? "bg-emerald-500 text-white"
+                      : active
+                      ? "bg-[image:var(--gradient-brand)] text-primary-foreground"
+                      : "bg-white/10 text-muted-foreground"
+                  }`}
+                  aria-current={active ? "step" : undefined}
+                >
+                  {i + 1}
+                </span>
+                <span className={`text-xs ${active ? "text-foreground" : "text-muted-foreground"}`}>{label}</span>
+                {i < 2 && <span className="h-px flex-1 bg-white/10" aria-hidden />}
+              </li>
+            );
+          })}
+        </ol>
 
         {step === "phone" && (
           <div className="space-y-3">
@@ -317,20 +362,20 @@ function ConnectDialog({
               <Label htmlFor="phone">Phone number</Label>
               <Input
                 id="phone"
-                placeholder="+15551234567"
+                placeholder="+1 555 123 4567"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 disabled={busy || !!requestId}
                 autoComplete="tel"
+                inputMode="tel"
+                className="h-11"
               />
               <p className="text-xs text-muted-foreground">
                 Include country code. Same number you use to sign in to Telegram.
               </p>
             </div>
             {requestId && (
-              <p className="text-xs text-muted-foreground">
-                Waiting for the worker to send the code…
-              </p>
+              <p className="text-xs text-muted-foreground">Waiting for the worker to send the code…</p>
             )}
           </div>
         )}
@@ -349,6 +394,7 @@ function ConnectDialog({
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 disabled={busy}
+                className="h-11 text-center font-mono text-lg tracking-[0.5em]"
               />
             </div>
           </div>
@@ -368,6 +414,7 @@ function ConnectDialog({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={busy}
+                className="h-11"
               />
             </div>
           </div>
@@ -377,24 +424,40 @@ function ConnectDialog({
           <p className="text-sm text-muted-foreground">Account connected. Closing…</p>
         )}
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </p>
+        )}
 
         <DialogFooter>
           {step === "phone" && (
-            <Button onClick={startFlow} disabled={busy || !phone || !!requestId} className="w-full">
-              {busy || requestId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            <Button
+              onClick={startFlow}
+              disabled={busy || !phone || !!requestId}
+              className="h-11 w-full bg-[image:var(--gradient-brand)] text-primary-foreground"
+            >
+              {busy || requestId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
               Send code
             </Button>
           )}
           {step === "code" && (
-            <Button onClick={sendCodeStep} disabled={busy || code.length < 3} className="w-full">
-              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            <Button
+              onClick={sendCodeStep}
+              disabled={busy || code.length < 3}
+              className="h-11 w-full bg-[image:var(--gradient-brand)] text-primary-foreground"
+            >
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
               Verify code
             </Button>
           )}
           {step === "password" && (
-            <Button onClick={sendPwdStep} disabled={busy || !password} className="w-full">
-              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            <Button
+              onClick={sendPwdStep}
+              disabled={busy || !password}
+              className="h-11 w-full bg-[image:var(--gradient-brand)] text-primary-foreground"
+            >
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
               Sign in
             </Button>
           )}
