@@ -25,16 +25,18 @@ export const Route = createFileRoute("/api/public/worker/complete")({
         const { id, status, result_message, channel_id, invite_link, failure_reason } = parsed.data;
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const patch: Record<string, unknown> = {
+          status,
+          failure_reason: status === "failed" ? failure_reason ?? "other" : null,
+          claimed_at: status === "done" ? new Date().toISOString() : null,
+        };
+        if (result_message !== undefined) patch.result_message = result_message;
+        if (channel_id !== undefined) patch.channel_id = channel_id;
+        if (invite_link !== undefined) patch.invite_link = invite_link;
+
         const { error } = await supabaseAdmin
           .from("claim_jobs")
-          .update({
-            status,
-            result_message: result_message ?? null,
-            channel_id: channel_id ?? null,
-            invite_link: invite_link ?? null,
-            failure_reason: status === "failed" ? failure_reason ?? "other" : null,
-            claimed_at: status === "done" ? new Date().toISOString() : null,
-          })
+          .update(patch)
           .eq("id", id);
         if (error) return json({ error: error.message }, 500);
         return json({ ok: true });
