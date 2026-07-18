@@ -437,6 +437,15 @@ function Dashboard({ email }: { email: string | null }) {
                     />
                   </div>
                   <div className="space-y-2">
+                    <div className="flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, first_post_media_url: SAMPLE_BANNER }))}
+                        className="text-[11px] font-medium uppercase tracking-widest text-primary hover:underline"
+                      >
+                        Use hankie banner
+                      </button>
+                    </div>
                     <Label htmlFor="first_post_media_url" className="sr-only">First post media URL</Label>
                     <Input
                       id="first_post_media_url"
