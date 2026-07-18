@@ -19,6 +19,7 @@ Environment (see .env.example):
   POLL_INTERVAL    seconds between polls (default 3)
 """
 import os
+import random
 import sys
 import time
 import tempfile
