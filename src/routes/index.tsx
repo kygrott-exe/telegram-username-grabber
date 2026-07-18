@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { createJob, deleteJob, listJobs } from "@/lib/jobs.functions";
 import { listAccounts } from "@/lib/telegram-accounts.functions";
+import { listTemplates, saveTemplate, deleteTemplate } from "@/lib/templates.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, LogOut, Send, Trash2, Users } from "lucide-react";
+import { Loader2, LogOut, Save, Send, Trash2, Users, X } from "lucide-react";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -75,13 +77,30 @@ function Dashboard({ email }: { email: string | null }) {
   const create = useServerFn(createJob);
   const del = useServerFn(deleteJob);
   const listAcc = useServerFn(listAccounts);
+  const listTpl = useServerFn(listTemplates);
+  const saveTpl = useServerFn(saveTemplate);
+  const delTpl = useServerFn(deleteTemplate);
 
   const [accountId, setAccountId] = useState<string>("");
+  const [selectedTpl, setSelectedTpl] = useState<string>("");
+  const [form, setForm] = useState({
+    channel_title: "",
+    channel_description: "",
+    pfp_url: "",
+    first_post_text: "",
+    first_post_media_url: "",
+  });
+  const usernamesRef = useRef<HTMLTextAreaElement>(null);
 
   const accountsQuery = useQuery({
     queryKey: ["telegram-accounts"],
     queryFn: () => listAcc(),
     refetchInterval: 10000,
+  });
+
+  const templatesQuery = useQuery({
+    queryKey: ["templates"],
+    queryFn: () => listTpl(),
   });
 
   const jobsQuery = useQuery({
@@ -97,6 +116,8 @@ function Dashboard({ email }: { email: string | null }) {
       channel_title: string;
       channel_description: string;
       pfp_url: string;
+      first_post_text: string;
+      first_post_media_url: string;
     }) => create({ data }),
     onSuccess: (res) => {
       toast.success(`Queued ${res.count} claim${res.count === 1 ? "" : "s"}. Worker paces 10–15s apart.`);
@@ -110,8 +131,40 @@ function Dashboard({ email }: { email: string | null }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["jobs"] }),
   });
 
+  const saveTplMut = useMutation({
+    mutationFn: (name: string) =>
+      saveTpl({ data: { name, ...form } }),
+    onSuccess: () => {
+      toast.success("Template saved");
+      qc.invalidateQueries({ queryKey: ["templates"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const delTplMut = useMutation({
+    mutationFn: (id: string) => delTpl({ data: { id } }),
+    onSuccess: () => {
+      setSelectedTpl("");
+      qc.invalidateQueries({ queryKey: ["templates"] });
+    },
+  });
+
   const accounts = accountsQuery.data ?? [];
+  const templates = templatesQuery.data ?? [];
   const hasAccounts = accounts.length > 0;
+
+  const applyTemplate = (id: string) => {
+    setSelectedTpl(id);
+    const t = templates.find((x) => x.id === id);
+    if (!t) return;
+    setForm({
+      channel_title: t.channel_title ?? "",
+      channel_description: t.channel_description ?? "",
+      pfp_url: t.pfp_url ?? "",
+      first_post_text: t.first_post_text ?? "",
+      first_post_media_url: t.first_post_media_url ?? "",
+    });
+  };
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -119,8 +172,7 @@ function Dashboard({ email }: { email: string | null }) {
       toast.error("Pick a Telegram account first");
       return;
     }
-    const f = new FormData(e.currentTarget);
-    const raw = String(f.get("usernames") || "");
+    const raw = usernamesRef.current?.value || "";
     const usernames = raw
       .split(/[\s,]+/)
       .map((u) => u.trim().replace(/^@/, ""))
@@ -129,15 +181,28 @@ function Dashboard({ email }: { email: string | null }) {
       toast.error("Enter at least one username");
       return;
     }
+    if (!form.channel_title.trim()) {
+      toast.error("Channel title is required");
+      return;
+    }
     createMut.mutate({
       telegram_account_id: accountId,
       usernames,
-      channel_title: String(f.get("channel_title") || ""),
-      channel_description: String(f.get("channel_description") || ""),
-      pfp_url: String(f.get("pfp_url") || ""),
+      ...form,
     });
-    e.currentTarget.reset();
+    if (usernamesRef.current) usernamesRef.current.value = "";
   };
+
+  const onSaveTemplate = () => {
+    const name = window.prompt("Template name?", "");
+    if (!name?.trim()) return;
+    if (!form.channel_title.trim()) {
+      toast.error("Add a channel title before saving");
+      return;
+    }
+    saveTplMut.mutate(name.trim());
+  };
+
 
   return (
     <div className="min-h-screen bg-background">
