@@ -250,6 +250,33 @@ function Dashboard({ email }: { email: string | null }) {
             ) : (
               <form onSubmit={onSubmit} className="space-y-4">
                 <div className="space-y-2">
+                  <Label>Template</Label>
+                  <div className="flex gap-2">
+                    <Select value={selectedTpl} onValueChange={applyTemplate}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder={templates.length ? "Load template" : "No templates yet"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedTpl && (
+                      <Button type="button" size="icon" variant="ghost"
+                        onClick={() => delTplMut.mutate(selectedTpl)}
+                        title="Delete template">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button type="button" size="icon" variant="outline"
+                      onClick={onSaveTemplate} disabled={saveTplMut.isPending}
+                      title="Save current fields as a template">
+                      <Save className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
                   <Label>Telegram account</Label>
                   <Select value={accountId} onValueChange={setAccountId}>
                     <SelectTrigger>
@@ -268,6 +295,7 @@ function Dashboard({ email }: { email: string | null }) {
                 <div className="space-y-2">
                   <Label htmlFor="usernames">Usernames</Label>
                   <Textarea
+                    ref={usernamesRef}
                     id="usernames"
                     name="usernames"
                     placeholder={"mychannel\nanother_one\n@third"}
@@ -281,15 +309,34 @@ function Dashboard({ email }: { email: string | null }) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="channel_title">Channel title</Label>
-                  <Input id="channel_title" name="channel_title" placeholder="My Channel" required maxLength={128} />
+                  <Input id="channel_title" value={form.channel_title}
+                    onChange={(e) => setForm((f) => ({ ...f, channel_title: e.target.value }))}
+                    placeholder="My Channel" required maxLength={128} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="channel_description">Description</Label>
-                  <Textarea id="channel_description" name="channel_description" maxLength={255} rows={3} />
+                  <Textarea id="channel_description" value={form.channel_description}
+                    onChange={(e) => setForm((f) => ({ ...f, channel_description: e.target.value }))}
+                    maxLength={255} rows={3} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="pfp_url">Profile photo URL (optional)</Label>
-                  <Input id="pfp_url" name="pfp_url" type="url" placeholder="https://..." />
+                  <Input id="pfp_url" type="url" value={form.pfp_url}
+                    onChange={(e) => setForm((f) => ({ ...f, pfp_url: e.target.value }))}
+                    placeholder="https://..." />
+                </div>
+                <div className="space-y-2 rounded-lg border border-dashed p-3">
+                  <Label htmlFor="first_post_text">First post (optional)</Label>
+                  <Textarea id="first_post_text" value={form.first_post_text}
+                    onChange={(e) => setForm((f) => ({ ...f, first_post_text: e.target.value }))}
+                    maxLength={4000} rows={3}
+                    placeholder="Welcome message posted right after claiming…" />
+                  <Input type="url" value={form.first_post_media_url}
+                    onChange={(e) => setForm((f) => ({ ...f, first_post_media_url: e.target.value }))}
+                    placeholder="Media URL (image/video, optional)" />
+                  <p className="text-xs text-muted-foreground">
+                    If text or media is set, the worker posts it in the new channel right after claiming.
+                  </p>
                 </div>
                 <Button type="submit" className="w-full" disabled={createMut.isPending}>
                   {createMut.isPending ? (
@@ -300,6 +347,7 @@ function Dashboard({ email }: { email: string | null }) {
                   Queue claim
                 </Button>
               </form>
+
             )}
           </CardContent>
         </Card>
