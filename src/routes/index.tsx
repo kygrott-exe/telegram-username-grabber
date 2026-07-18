@@ -42,7 +42,17 @@ function Home() {
   const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return;
+      if (!data.session) navigate({ to: "/auth" });
+      else {
+        setEmail(data.session.user.email ?? null);
+        setReady(true);
+      }
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       if (!session) {
         navigate({ to: "/auth" });
       } else {
@@ -50,14 +60,10 @@ function Home() {
         setReady(true);
       }
     });
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) navigate({ to: "/auth" });
-      else {
-        setEmail(data.session.user.email ?? null);
-        setReady(true);
-      }
-    });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
   }, [navigate]);
 
   if (!ready) {
