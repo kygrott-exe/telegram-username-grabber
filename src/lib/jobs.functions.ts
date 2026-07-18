@@ -2,14 +2,22 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const UsernameRegex = /^[a-zA-Z][a-zA-Z0-9_]{4,31}$/;
+
 const CreateJobSchema = z.object({
   telegram_account_id: z.string().uuid(),
-  username: z
-    .string()
-    .trim()
-    .min(5)
-    .max(32)
-    .regex(/^[a-zA-Z][a-zA-Z0-9_]{4,31}$/, "5-32 chars, letters/digits/underscore, must start with a letter"),
+  usernames: z
+    .array(
+      z
+        .string()
+        .trim()
+        .transform((s) => s.replace(/^@/, ""))
+        .refine((s) => UsernameRegex.test(s), {
+          message: "5-32 chars, letters/digits/underscore, must start with a letter",
+        }),
+    )
+    .min(1)
+    .max(50),
   channel_title: z.string().trim().min(1).max(128),
   channel_description: z.string().trim().max(255).optional().default(""),
   pfp_url: z.string().trim().url().optional().or(z.literal("")),
@@ -21,7 +29,6 @@ export const createJob = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Confirm the account belongs to this user (RLS also enforces it, but fail fast).
     const { data: account, error: accErr } = await supabase
       .from("telegram_accounts")
       .select("id, status")
@@ -31,20 +38,24 @@ export const createJob = createServerFn({ method: "POST" })
     if (!account) throw new Error("Telegram account not found");
     if (account.status !== "active") throw new Error("Telegram account is not active");
 
-    const { data: row, error } = await supabase
+    // Dedupe within the batch.
+    const uniq = Array.from(new Set(data.usernames.map((u) => u.toLowerCase())));
+
+    const rows = uniq.map((username) => ({
+      user_id: userId,
+      telegram_account_id: data.telegram_account_id,
+      username,
+      channel_title: data.channel_title,
+      channel_description: data.channel_description ?? "",
+      pfp_url: data.pfp_url || null,
+    }));
+
+    const { data: inserted, error } = await supabase
       .from("claim_jobs")
-      .insert({
-        user_id: userId,
-        telegram_account_id: data.telegram_account_id,
-        username: data.username.replace(/^@/, ""),
-        channel_title: data.channel_title,
-        channel_description: data.channel_description ?? "",
-        pfp_url: data.pfp_url || null,
-      })
-      .select()
-      .single();
+      .insert(rows)
+      .select();
     if (error) throw new Error(error.message);
-    return row;
+    return { count: inserted?.length ?? 0 };
   });
 
 export const listJobs = createServerFn({ method: "GET" })
