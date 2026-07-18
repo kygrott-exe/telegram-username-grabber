@@ -179,13 +179,16 @@ def _safe_disconnect(client: TelegramClient) -> None:
 # CLAIM FLOW
 # ---------------------------------------------------------------------------
 
-def report_job(job_id, status, message="", channel_id=None, invite_link=None):
+def report_job(job_id, status, message="", channel_id=None, invite_link=None,
+               failure_reason=None):
     payload = {"id": job_id, "status": status,
                "result_message": message[:1900]}
     if channel_id:
         payload["channel_id"] = str(channel_id)
     if invite_link:
         payload["invite_link"] = invite_link
+    if failure_reason:
+        payload["failure_reason"] = failure_reason
     try:
         api_post("/api/public/worker/complete", payload)
     except Exception as e:
