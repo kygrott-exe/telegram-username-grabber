@@ -255,30 +255,30 @@ def process_job(job: dict):
                 return
         except UsernameOccupiedError:
             report_job(job_id, "failed", f"@{username} is already taken",
-                       channel_id=channel.id)
+                       channel_id=channel.id, failure_reason="taken")
             return
         except UsernameInvalidError:
             report_job(job_id, "failed", f"@{username} is invalid",
-                       channel_id=channel.id)
+                       channel_id=channel.id, failure_reason="invalid")
             return
         except UsernamePurchaseAvailableError:
             report_job(job_id, "failed",
                        f"@{username} is only available for purchase on Fragment",
-                       channel_id=channel.id)
+                       channel_id=channel.id, failure_reason="fragment")
             return
         except ChannelsAdminPublicTooMuchError:
             report_job(job_id, "failed",
                        "Your account owns too many public channels. Free one first.",
-                       channel_id=channel.id)
+                       channel_id=channel.id, failure_reason="other")
             return
         except FloodWaitError as e:
             report_job(job_id, "failed",
                        f"FloodWait on username: {e.seconds}s",
-                       channel_id=channel.id)
+                       channel_id=channel.id, failure_reason="flood")
             return
         except Exception as e:
             report_job(job_id, "failed", f"UpdateUsername error: {e}",
-                       channel_id=channel.id)
+                       channel_id=channel.id, failure_reason="other")
             return
 
         # 3. Profile photo (best-effort)
