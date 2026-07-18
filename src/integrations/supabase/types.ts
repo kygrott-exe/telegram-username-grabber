@@ -26,6 +26,7 @@ export type Database = {
           pfp_url: string | null
           result_message: string | null
           status: string
+          telegram_account_id: string | null
           updated_at: string
           user_id: string
           username: string
@@ -41,6 +42,7 @@ export type Database = {
           pfp_url?: string | null
           result_message?: string | null
           status?: string
+          telegram_account_id?: string | null
           updated_at?: string
           user_id: string
           username: string
@@ -56,11 +58,115 @@ export type Database = {
           pfp_url?: string | null
           result_message?: string | null
           status?: string
+          telegram_account_id?: string | null
           updated_at?: string
           user_id?: string
           username?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "claim_jobs_telegram_account_id_fkey"
+            columns: ["telegram_account_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      telegram_accounts: {
+        Row: {
+          created_at: string
+          first_name: string | null
+          id: string
+          phone: string
+          session_ciphertext: string
+          status: string
+          tg_user_id: number | null
+          tg_username: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          phone: string
+          session_ciphertext: string
+          status?: string
+          tg_user_id?: number | null
+          tg_username?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          phone?: string
+          session_ciphertext?: string
+          status?: string
+          tg_user_id?: number | null
+          tg_username?: string | null
+          updated_at?: string
+          user_id?: string
+        }
         Relationships: []
+      }
+      telegram_login_requests: {
+        Row: {
+          account_id: string | null
+          claimed_at: string | null
+          code: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          needs_2fa: boolean
+          password: string | null
+          phone: string
+          phone_code_hash: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          claimed_at?: string | null
+          code?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          needs_2fa?: boolean
+          password?: string | null
+          phone: string
+          phone_code_hash?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          claimed_at?: string | null
+          code?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          needs_2fa?: boolean
+          password?: string | null
+          phone?: string
+          phone_code_hash?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_login_requests_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "telegram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
