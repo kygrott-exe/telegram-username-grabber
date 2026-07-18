@@ -1,17 +1,25 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { createJob, deleteJob, listJobs } from "@/lib/jobs.functions";
+import { listAccounts } from "@/lib/telegram-accounts.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, LogOut, Send, Trash2 } from "lucide-react";
+import { Loader2, LogOut, Send, Trash2, Users } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -66,6 +74,15 @@ function Dashboard({ email }: { email: string | null }) {
   const list = useServerFn(listJobs);
   const create = useServerFn(createJob);
   const del = useServerFn(deleteJob);
+  const listAcc = useServerFn(listAccounts);
+
+  const [accountId, setAccountId] = useState<string>("");
+
+  const accountsQuery = useQuery({
+    queryKey: ["telegram-accounts"],
+    queryFn: () => listAcc(),
+    refetchInterval: 10000,
+  });
 
   const jobsQuery = useQuery({
     queryKey: ["jobs"],
@@ -75,6 +92,7 @@ function Dashboard({ email }: { email: string | null }) {
 
   const createMut = useMutation({
     mutationFn: (data: {
+      telegram_account_id: string;
       username: string;
       channel_title: string;
       channel_description: string;
@@ -92,10 +110,18 @@ function Dashboard({ email }: { email: string | null }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["jobs"] }),
   });
 
+  const accounts = accountsQuery.data ?? [];
+  const hasAccounts = accounts.length > 0;
+
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!accountId) {
+      toast.error("Pick a Telegram account first");
+      return;
+    }
     const f = new FormData(e.currentTarget);
     createMut.mutate({
+      telegram_account_id: accountId,
       username: String(f.get("username") || ""),
       channel_title: String(f.get("channel_title") || ""),
       channel_description: String(f.get("channel_description") || ""),
@@ -112,15 +138,22 @@ function Dashboard({ email }: { email: string | null }) {
             <h1 className="text-lg font-semibold tracking-tight">Telegram Username Claimer</h1>
             <p className="text-xs text-muted-foreground">Signed in as {email}</p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={async () => {
-              await supabase.auth.signOut();
-            }}
-          >
-            <LogOut className="mr-2 h-4 w-4" /> Sign out
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/accounts">
+                <Users className="mr-2 h-4 w-4" /> Accounts
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                await supabase.auth.signOut();
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" /> Sign out
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -131,33 +164,60 @@ function Dashboard({ email }: { email: string | null }) {
             <CardDescription>Queue a job for the worker to claim.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={onSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input id="username" name="username" placeholder="e.g. mychannel" required />
-                <p className="text-xs text-muted-foreground">5-32 chars, must start with a letter.</p>
+            {!hasAccounts ? (
+              <div className="space-y-3 rounded-lg border border-dashed p-4 text-sm">
+                <p>You haven't connected any Telegram accounts yet.</p>
+                <Button asChild className="w-full">
+                  <Link to="/accounts">
+                    <Users className="mr-2 h-4 w-4" /> Connect an account
+                  </Link>
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="channel_title">Channel title</Label>
-                <Input id="channel_title" name="channel_title" placeholder="My Channel" required maxLength={128} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="channel_description">Description</Label>
-                <Textarea id="channel_description" name="channel_description" maxLength={255} rows={3} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pfp_url">Profile photo URL (optional)</Label>
-                <Input id="pfp_url" name="pfp_url" type="url" placeholder="https://..." />
-              </div>
-              <Button type="submit" className="w-full" disabled={createMut.isPending}>
-                {createMut.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="mr-2 h-4 w-4" />
-                )}
-                Queue claim
-              </Button>
-            </form>
+            ) : (
+              <form onSubmit={onSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Telegram account</Label>
+                  <Select value={accountId} onValueChange={setAccountId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Pick an account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.first_name || "Telegram user"}
+                          {a.tg_username ? ` (@${a.tg_username})` : ""} — {a.phone}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input id="username" name="username" placeholder="e.g. mychannel" required />
+                  <p className="text-xs text-muted-foreground">5-32 chars, must start with a letter.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="channel_title">Channel title</Label>
+                  <Input id="channel_title" name="channel_title" placeholder="My Channel" required maxLength={128} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="channel_description">Description</Label>
+                  <Textarea id="channel_description" name="channel_description" maxLength={255} rows={3} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pfp_url">Profile photo URL (optional)</Label>
+                  <Input id="pfp_url" name="pfp_url" type="url" placeholder="https://..." />
+                </div>
+                <Button type="submit" className="w-full" disabled={createMut.isPending}>
+                  {createMut.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  Queue claim
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
 
@@ -215,7 +275,7 @@ function Dashboard({ email }: { email: string | null }) {
 
       <footer className="mx-auto max-w-5xl px-6 pb-8 text-xs text-muted-foreground">
         Run the Python worker (see <code className="font-mono">worker/README.md</code>) on your own machine
-        to actually claim usernames. Bots cannot do this — the worker signs in as your Telegram user account.
+        to drive Telegram logins and claim usernames.
       </footer>
     </div>
   );
