@@ -6,11 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { createJob, deleteJob, listJobs } from "@/lib/jobs.functions";
 import { listAccounts } from "@/lib/telegram-accounts.functions";
 import { listTemplates, saveTemplate, deleteTemplate } from "@/lib/templates.functions";
+import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -20,13 +20,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, LogOut, Save, Send, Trash2, Users, X } from "lucide-react";
-
+import {
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Save,
+  Send,
+  Trash2,
+  Users,
+  X,
+  XCircle,
+} from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Telegram Username Claimer" },
+      { title: "Dashboard — Telegram Username Claimer" },
       { name: "description", content: "Queue Telegram channel username claims with title, description, and profile photo." },
       { property: "og:title", content: "Telegram Username Claimer" },
       { property: "og:description", content: "Queue Telegram channel username claims with title, description, and profile photo." },
@@ -68,13 +77,46 @@ function Home() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="flex min-h-dvh items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Loading" />
       </div>
     );
   }
 
   return <Dashboard email={email} />;
+}
+
+function Panel({
+  title,
+  description,
+  children,
+  className = "",
+  action,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+  className?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <section
+      className={`glass rounded-3xl p-5 shadow-[var(--shadow-elegant)] sm:p-6 ${className}`}
+    >
+      <header className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="font-heading text-base font-semibold tracking-tight sm:text-lg">
+            {title}
+          </h2>
+          {description && (
+            <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+          )}
+        </div>
+        {action}
+      </header>
+      {children}
+    </section>
+  );
 }
 
 function Dashboard({ email }: { email: string | null }) {
@@ -138,8 +180,7 @@ function Dashboard({ email }: { email: string | null }) {
   });
 
   const saveTplMut = useMutation({
-    mutationFn: (name: string) =>
-      saveTpl({ data: { name, ...form } }),
+    mutationFn: (name: string) => saveTpl({ data: { name, ...form } }),
     onSuccess: () => {
       toast.success("Template saved");
       qc.invalidateQueries({ queryKey: ["templates"] });
@@ -157,7 +198,15 @@ function Dashboard({ email }: { email: string | null }) {
 
   const accounts = accountsQuery.data ?? [];
   const templates = templatesQuery.data ?? [];
+  const jobs = jobsQuery.data ?? [];
   const hasAccounts = accounts.length > 0;
+
+  const stats = {
+    total: jobs.length,
+    done: jobs.filter((j) => j.status === "done").length,
+    failed: jobs.filter((j) => j.status === "failed").length,
+    pending: jobs.filter((j) => j.status !== "done" && j.status !== "failed").length,
+  };
 
   const applyTemplate = (id: string) => {
     setSelectedTpl(id);
@@ -209,57 +258,53 @@ function Dashboard({ email }: { email: string | null }) {
     saveTplMut.mutate(name.trim());
   };
 
-
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">Telegram Username Claimer</h1>
-            <p className="text-xs text-muted-foreground">Signed in as {email}</p>
+    <AppShell email={email}>
+      <main className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
+        {/* Hero + stats bento */}
+        <section aria-labelledby="dash-title" className="mb-6 grid gap-4 lg:grid-cols-4">
+          <div className="glass rounded-3xl p-6 shadow-[var(--shadow-elegant)] lg:col-span-2">
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Dashboard</p>
+            <h1 id="dash-title" className="mt-2 font-heading text-3xl font-bold leading-tight sm:text-4xl">
+              Sweep drops <span className="text-gradient">on autopilot</span>.
+            </h1>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">
+              Queue batches of usernames. The worker paces claims 10–15s apart to stay under Telegram's radar.
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link to="/accounts">
-                <Users className="mr-2 h-4 w-4" /> Accounts
-              </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={async () => {
-                await supabase.auth.signOut();
-              }}
-            >
-              <LogOut className="mr-2 h-4 w-4" /> Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
+          <StatCard label="Queued" value={stats.pending} icon={Clock} tone="brand" />
+          <StatCard label="Claimed" value={stats.done} icon={CheckCircle2} tone="success" />
+        </section>
 
-      <main className="mx-auto grid max-w-5xl gap-6 px-6 py-8 md:grid-cols-5">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>New claim</CardTitle>
-            <CardDescription>Queue a job for the worker to claim.</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <div className="grid gap-4 lg:grid-cols-5">
+          {/* Compose */}
+          <Panel
+            title="New claim"
+            description="Queue a job for the worker to claim."
+            className="lg:col-span-2"
+          >
             {!hasAccounts ? (
-              <div className="space-y-3 rounded-lg border border-dashed p-4 text-sm">
-                <p>You haven't connected any Telegram accounts yet.</p>
-                <Button asChild className="w-full">
+              <div className="space-y-4 rounded-2xl border border-dashed border-white/15 bg-white/5 p-5 text-center">
+                <Users className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden />
+                <div>
+                  <p className="font-medium">No Telegram accounts yet</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Connect one to start claiming usernames.
+                  </p>
+                </div>
+                <Button asChild className="w-full bg-[image:var(--gradient-brand)] text-primary-foreground">
                   <Link to="/accounts">
-                    <Users className="mr-2 h-4 w-4" /> Connect an account
+                    <Users className="mr-2 h-4 w-4" aria-hidden /> Connect an account
                   </Link>
                 </Button>
               </div>
             ) : (
-              <form onSubmit={onSubmit} className="space-y-4">
+              <form onSubmit={onSubmit} className="space-y-4" aria-label="Queue a claim">
                 <div className="space-y-2">
                   <Label>Template</Label>
                   <div className="flex gap-2">
                     <Select value={selectedTpl} onValueChange={applyTemplate}>
-                      <SelectTrigger className="flex-1">
+                      <SelectTrigger className="h-10 flex-1" aria-label="Load template">
                         <SelectValue placeholder={templates.length ? "Load template" : "No templates yet"} />
                       </SelectTrigger>
                       <SelectContent>
@@ -269,23 +314,33 @@ function Dashboard({ email }: { email: string | null }) {
                       </SelectContent>
                     </Select>
                     {selectedTpl && (
-                      <Button type="button" size="icon" variant="ghost"
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
                         onClick={() => delTplMut.mutate(selectedTpl)}
-                        title="Delete template">
-                        <X className="h-4 w-4" />
+                        aria-label="Delete selected template"
+                      >
+                        <X className="h-4 w-4" aria-hidden />
                       </Button>
                     )}
-                    <Button type="button" size="icon" variant="outline"
-                      onClick={onSaveTemplate} disabled={saveTplMut.isPending}
-                      title="Save current fields as a template">
-                      <Save className="h-4 w-4" />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      onClick={onSaveTemplate}
+                      disabled={saveTplMut.isPending}
+                      aria-label="Save current fields as a template"
+                    >
+                      <Save className="h-4 w-4" aria-hidden />
                     </Button>
                   </div>
                 </div>
+
                 <div className="space-y-2">
-                  <Label>Telegram account</Label>
+                  <Label htmlFor="account">Telegram account</Label>
                   <Select value={accountId} onValueChange={setAccountId}>
-                    <SelectTrigger>
+                    <SelectTrigger id="account" className="h-10">
                       <SelectValue placeholder="Pick an account" />
                     </SelectTrigger>
                     <SelectContent>
@@ -298,6 +353,7 @@ function Dashboard({ email }: { email: string | null }) {
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="usernames">Usernames</Label>
                   <Textarea
@@ -313,137 +369,224 @@ function Dashboard({ email }: { email: string | null }) {
                     One per line (or comma/space separated). Worker paces 10–15s between claims. Max 50 per batch.
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="channel_title">Channel title</Label>
-                  <Input id="channel_title" value={form.channel_title}
-                    onChange={(e) => setForm((f) => ({ ...f, channel_title: e.target.value }))}
-                    placeholder="My Channel" required maxLength={128} />
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="channel_title">Channel title</Label>
+                    <Input
+                      id="channel_title"
+                      value={form.channel_title}
+                      onChange={(e) => setForm((f) => ({ ...f, channel_title: e.target.value }))}
+                      placeholder="My Channel"
+                      required
+                      maxLength={128}
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="channel_description">Description</Label>
+                    <Textarea
+                      id="channel_description"
+                      value={form.channel_description}
+                      onChange={(e) => setForm((f) => ({ ...f, channel_description: e.target.value }))}
+                      maxLength={255}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="pfp_url">Profile photo URL (optional)</Label>
+                    <Input
+                      id="pfp_url"
+                      type="url"
+                      value={form.pfp_url}
+                      onChange={(e) => setForm((f) => ({ ...f, pfp_url: e.target.value }))}
+                      placeholder="https://…"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="channel_description">Description</Label>
-                  <Textarea id="channel_description" value={form.channel_description}
-                    onChange={(e) => setForm((f) => ({ ...f, channel_description: e.target.value }))}
-                    maxLength={255} rows={3} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pfp_url">Profile photo URL (optional)</Label>
-                  <Input id="pfp_url" type="url" value={form.pfp_url}
-                    onChange={(e) => setForm((f) => ({ ...f, pfp_url: e.target.value }))}
-                    placeholder="https://..." />
-                </div>
-                <div className="space-y-2 rounded-lg border border-dashed p-3">
-                  <Label htmlFor="first_post_text">First post (optional)</Label>
-                  <Textarea id="first_post_text" value={form.first_post_text}
-                    onChange={(e) => setForm((f) => ({ ...f, first_post_text: e.target.value }))}
-                    maxLength={4000} rows={3}
-                    placeholder="Welcome message posted right after claiming…" />
-                  <Input type="url" value={form.first_post_media_url}
-                    onChange={(e) => setForm((f) => ({ ...f, first_post_media_url: e.target.value }))}
-                    placeholder="Media URL (image/video, optional)" />
+
+                <fieldset className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <legend className="px-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                    First post (optional)
+                  </legend>
+                  <div className="space-y-2">
+                    <Label htmlFor="first_post_text" className="sr-only">First post text</Label>
+                    <Textarea
+                      id="first_post_text"
+                      value={form.first_post_text}
+                      onChange={(e) => setForm((f) => ({ ...f, first_post_text: e.target.value }))}
+                      maxLength={4000}
+                      rows={3}
+                      placeholder="Welcome message posted right after claiming…"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="first_post_media_url" className="sr-only">First post media URL</Label>
+                    <Input
+                      id="first_post_media_url"
+                      type="url"
+                      value={form.first_post_media_url}
+                      onChange={(e) => setForm((f) => ({ ...f, first_post_media_url: e.target.value }))}
+                      placeholder="Media URL (image/video, optional)"
+                    />
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    If text or media is set, the worker posts it in the new channel right after claiming.
+                    Posted in the new channel right after claiming.
                   </p>
-                </div>
-                <Button type="submit" className="w-full" disabled={createMut.isPending}>
+                </fieldset>
+
+                <Button
+                  type="submit"
+                  className="h-11 w-full bg-[image:var(--gradient-brand)] font-medium text-primary-foreground shadow-[var(--shadow-glow)] hover:opacity-95"
+                  disabled={createMut.isPending}
+                >
                   {createMut.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
                   ) : (
-                    <Send className="mr-2 h-4 w-4" />
+                    <Send className="mr-2 h-4 w-4" aria-hidden />
                   )}
                   Queue claim
                 </Button>
               </form>
-
             )}
-          </CardContent>
-        </Card>
+          </Panel>
 
-        <Card className="md:col-span-3">
-          <CardHeader>
-            <CardTitle>Jobs</CardTitle>
-            <CardDescription>Latest 100 jobs. Auto-refreshes every 4s.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
+          {/* Jobs feed */}
+          <Panel
+            title="Jobs"
+            description="Latest 100 jobs. Auto-refreshes every 4s."
+            className="lg:col-span-3"
+            action={
+              stats.failed > 0 ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-widest text-destructive">
+                  <XCircle className="h-3 w-3" aria-hidden /> {stats.failed} failed
+                </span>
+              ) : undefined
+            }
+          >
             {jobsQuery.isLoading && (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <div className="flex justify-center py-10">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading jobs" />
               </div>
             )}
-            {jobsQuery.data?.length === 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">No jobs yet.</p>
+            {!jobsQuery.isLoading && jobs.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-white/10 py-14 text-center">
+                <p className="text-sm text-muted-foreground">No jobs yet. Queue your first claim.</p>
+              </div>
             )}
-            {jobsQuery.data?.map((j) => (
-              <div key={j.id} className="rounded-lg border p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <ReasonTag reason={(j as { failure_reason?: string | null }).failure_reason ?? null} />
-                      <span className="font-mono text-sm">@{j.username}</span>
-                      <StatusBadge status={j.status} />
+            <ul className="space-y-2">
+              {jobs.map((j) => (
+                <li
+                  key={j.id}
+                  className="group rounded-2xl border border-white/10 bg-white/[0.03] p-3 transition-colors hover:border-white/20 hover:bg-white/[0.06]"
+                >
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <ReasonTag reason={(j as { failure_reason?: string | null }).failure_reason ?? null} />
+                        <span className="truncate font-mono text-sm font-medium">@{j.username}</span>
+                        <StatusBadge status={j.status} />
+                      </div>
+                      {j.channel_title && (
+                        <p className="mt-1 truncate text-sm text-foreground/90">{j.channel_title}</p>
+                      )}
+                      {j.result_message && (
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{j.result_message}</p>
+                      )}
+                      {j.invite_link && (
+                        <a
+                          href={j.invite_link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-block truncate text-xs text-primary hover:underline"
+                        >
+                          {j.invite_link}
+                        </a>
+                      )}
                     </div>
-                    <p className="mt-1 truncate text-sm">{j.channel_title}</p>
-                    {j.result_message && (
-                      <p className="mt-1 text-xs text-muted-foreground">{j.result_message}</p>
-                    )}
-                    {j.invite_link && (
-                      <a
-                        href={j.invite_link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-1 inline-block text-xs text-primary hover:underline"
-                      >
-                        {j.invite_link}
-                      </a>
-                    )}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9 shrink-0 opacity-60 hover:opacity-100"
+                      onClick={() => deleteMut.mutate(j.id)}
+                      disabled={deleteMut.isPending}
+                      aria-label={`Delete job for @${j.username}`}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </Button>
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => deleteMut.mutate(j.id)}
-                    disabled={deleteMut.isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </main>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        </div>
 
-      <footer className="mx-auto max-w-5xl px-6 pb-8 text-xs text-muted-foreground">
-        Run the Python worker (see <code className="font-mono">worker/README.md</code>) on your own machine
-        to drive Telegram logins and claim usernames.
-      </footer>
+        <footer className="mt-10 text-center text-xs text-muted-foreground">
+          Run the Python worker (see <code className="font-mono">worker/README.md</code>) on your own machine to drive Telegram logins and claim usernames.
+        </footer>
+      </main>
+    </AppShell>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: number;
+  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  tone: "brand" | "success";
+}) {
+  const toneClass =
+    tone === "brand"
+      ? "from-primary/20 to-primary/0 text-primary"
+      : "from-emerald-400/20 to-emerald-400/0 text-emerald-300";
+  return (
+    <div className="glass relative overflow-hidden rounded-3xl p-5 shadow-[var(--shadow-elegant)]">
+      <div className={`absolute inset-0 -z-10 bg-gradient-to-br ${toneClass}`} aria-hidden />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">{label}</p>
+          <p className="mt-1 font-heading text-3xl font-bold tabular-nums">{value}</p>
+        </div>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10">
+          <Icon className="h-4 w-4" aria-hidden />
+        </span>
+      </div>
     </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const variant =
-    status === "done"
-      ? "default"
-      : status === "failed"
-      ? "destructive"
-      : status === "processing"
-      ? "secondary"
-      : "outline";
-  return <Badge variant={variant as "default" | "destructive" | "secondary" | "outline"}>{status}</Badge>;
+  const map: Record<string, { label: string; className: string }> = {
+    done: { label: "done", className: "bg-emerald-500/15 text-emerald-300 border-emerald-400/30" },
+    failed: { label: "failed", className: "bg-destructive/15 text-destructive border-destructive/30" },
+    processing: { label: "processing", className: "bg-primary/15 text-primary border-primary/30" },
+    queued: { label: "queued", className: "bg-white/5 text-muted-foreground border-white/15" },
+  };
+  const cfg = map[status] ?? { label: status, className: "bg-white/5 text-muted-foreground border-white/15" };
+  return (
+    <Badge variant="outline" className={`border ${cfg.className} rounded-full px-2 py-0 text-[10px] uppercase tracking-widest`}>
+      {cfg.label}
+    </Badge>
+  );
 }
 
 function ReasonTag({ reason }: { reason: string | null }) {
   if (!reason) return null;
   const map: Record<string, { label: string; className: string }> = {
-    taken: { label: "TAKEN", className: "bg-red-500/15 text-red-500 border-red-500/30" },
-    invalid: { label: "INVALID", className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
-    fragment: { label: "ON FRAGMENT", className: "bg-violet-500/15 text-violet-500 border-violet-500/30" },
-    flood: { label: "FLOOD WAIT", className: "bg-orange-500/15 text-orange-500 border-orange-500/30" },
+    taken: { label: "TAKEN", className: "bg-red-500/15 text-red-400 border-red-500/30" },
+    invalid: { label: "INVALID", className: "bg-amber-500/15 text-amber-300 border-amber-500/30" },
+    fragment: { label: "ON FRAGMENT", className: "bg-violet-500/15 text-violet-300 border-violet-500/30" },
+    flood: { label: "FLOOD WAIT", className: "bg-orange-500/15 text-orange-300 border-orange-500/30" },
     other: { label: "ERROR", className: "bg-muted text-muted-foreground border-border" },
   };
   const cfg = map[reason] ?? map.other;
   return (
     <span
-      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold tracking-wider ${cfg.className}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-widest ${cfg.className}`}
     >
       {cfg.label}
     </span>
