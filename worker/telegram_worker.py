@@ -24,6 +24,14 @@ import sys
 import time
 import tempfile
 import traceback
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).with_name(".env"))
+except ImportError:
+    pass
+
 
 import requests
 from telethon import TelegramClient
