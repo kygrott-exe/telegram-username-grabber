@@ -132,8 +132,8 @@ def handle_login_task(task: dict) -> None:
     if status == "pending":
         client = TelegramClient(StringSession(), API_ID, API_HASH)
         try:
-            client.connect()
-            sent = client.send_code_request(phone)
+            run(client.connect())
+            sent = run(client.send_code_request(phone))
             _pending_clients[task_id] = client
             report_login(task_id, "code_sent",
                          phone_code_hash=sent.phone_code_hash)
@@ -157,8 +157,8 @@ def handle_login_task(task: dict) -> None:
             return
         code = task.get("code") or ""
         try:
-            client.sign_in(phone=phone, code=code,
-                           phone_code_hash=task.get("phone_code_hash"))
+            run(client.sign_in(phone=phone, code=code,
+                               phone_code_hash=task.get("phone_code_hash")))
             _finalize_success(task_id, client)
         except SessionPasswordNeededError:
             report_login(task_id, "need_2fa")
@@ -178,7 +178,7 @@ def handle_login_task(task: dict) -> None:
             return
         password = task.get("password") or ""
         try:
-            client.sign_in(password=password)
+            run(client.sign_in(password=password))
             _finalize_success(task_id, client)
         except PasswordHashInvalidError:
             _cleanup(task_id)
@@ -191,7 +191,7 @@ def handle_login_task(task: dict) -> None:
 
 def _finalize_success(task_id: str, client: TelegramClient) -> None:
     try:
-        me = client.get_me()
+        me = run(client.get_me())
         session_str = client.session.save()
         report_login(task_id, "success",
                      session=session_str,
