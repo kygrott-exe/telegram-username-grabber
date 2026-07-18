@@ -25,7 +25,14 @@ export const Route = createFileRoute("/api/public/worker/complete")({
         const { id, status, result_message, channel_id, invite_link, failure_reason } = parsed.data;
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const patch: Record<string, unknown> = {
+        const patch: {
+          status: "done" | "failed";
+          failure_reason: string | null;
+          claimed_at: string | null;
+          result_message?: string;
+          channel_id?: string;
+          invite_link?: string;
+        } = {
           status,
           failure_reason: status === "failed" ? failure_reason ?? "other" : null,
           claimed_at: status === "done" ? new Date().toISOString() : null,
