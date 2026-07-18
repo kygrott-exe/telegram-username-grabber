@@ -336,12 +336,30 @@ def process_job(job: dict):
                        channel_id=channel.id, failure_reason="other")
             return
 
-        # 3. Profile photo (best-effort)
+        # 3. Profile photo (best-effort). Telegram requires >=160x160; normalize with PIL.
         photo_note = ""
         if pfp_url:
             path = download_media(pfp_url)
             if path:
                 try:
+                    try:
+                        from PIL import Image
+                        img = Image.open(path).convert("RGB")
+                        w, h = img.size
+                        side = max(w, h, 640)
+                        canvas = Image.new("RGB", (side, side), (0, 0, 0))
+                        canvas.paste(img, ((side - w) // 2, (side - h) // 2))
+                        if side < 640:
+                            canvas = canvas.resize((640, 640), Image.LANCZOS)
+                        fixed = path + ".jpg"
+                        canvas.save(fixed, "JPEG", quality=92)
+                        try:
+                            os.unlink(path)
+                        except OSError:
+                            pass
+                        path = fixed
+                    except Exception as e:
+                        print(f"[WARN] PIL resize failed, uploading raw: {e}", file=sys.stderr)
                     f = run(client.upload_file(path))
                     run(client(EditPhotoRequest(
                         channel=channel,
